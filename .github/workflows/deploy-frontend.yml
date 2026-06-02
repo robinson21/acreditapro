@@ -42,6 +42,7 @@ jobs:
         run: npm run build
         env:
           VITE_API_URL: ${{ vars.VITE_API_URL || 'https://acreditapro-backend.onrender.com' }}
+          VITE_BASE_URL: ${{ vars.VITE_BASE_URL || '/acreditapro/' }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

@@ -8,6 +8,9 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
 
   return {
+    // Base path para GitHub Pages (sub-ruta /acreditapro/)
+    base: env.VITE_BASE_URL || '/',
+
     plugins: [react()],
 
     // Resolución de alias para imports absolutos (ej: @/components/...)

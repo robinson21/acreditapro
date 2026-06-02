@@ -19,10 +19,13 @@ const queryClient = new QueryClient({
   },
 });
 
+const baseUrl = import.meta.env.VITE_BASE_URL || '';
+const basename = baseUrl.replace(/\/+$/, ''); // quitar trailing slash
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <BrowserRouter basename={basename}>
         <App />
         <Toaster
           position="top-right"
