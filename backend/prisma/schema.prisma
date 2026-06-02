@@ -1,0 +1,477 @@
+// ============================================================
+// AcreditaPro - Schema Prisma Completo
+// Plataforma SaaS de acreditación documental y gestión de contratistas
+// Proveedor: SQLite (desarrollo local)
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// MODELO 1: Tenant (Multiempresa SaaS)
+// ============================================================
+
+model Tenant {
+  id        String   @id @default(uuid())
+  nombre    String
+  rut       String   @unique
+  giro      String?
+  direccion String?
+  telefono  String?
+  correo    String?
+  logo      String?
+  estado    String   @default("ACTIVO")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  users              User[]
+  companies          Company[]
+  projects           Project[]
+  contracts          Contract[]
+  documents          Document[]
+  complianceRules    ComplianceRule[]
+  alerts             Alert[]
+  auditLogs          AuditLog[]
+  notificationConfig NotificationConfig?
+  aiConfig           AiConfig?
+
+  @@map("tenants")
+}
+
+// ============================================================
+// MODELO 2: User (Usuario del sistema)
+// ============================================================
+
+model User {
+  id            String    @id @default(uuid())
+  tenantId      String
+  email         String
+  password      String
+  nombre        String
+  apellido      String
+  rut           String
+  telefono      String?
+  rol           String
+  cargo         String?
+  activo        Boolean   @default(true)
+  refreshToken  String?
+  ultimoAcceso  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relaciones
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  documentosRevisados Document[]
+  revisiones         DocumentReview[]
+  alertasRecibidas   Alert[]
+  versionesSubidas   DocumentVersion[]
+
+  @@index([tenantId])
+  @@index([email])
+  @@index([rut])
+  @@index([activo])
+  @@map("usuarios")
+}
+
+// ============================================================
+// MODELO 3: Company (Empresa contratista)
+// ============================================================
+
+model Company {
+  id                  String    @id @default(uuid())
+  tenantId            String
+  razonSocial         String
+  rut                 String
+  giro                String?
+  direccion           String?
+  telefono            String?
+  correo              String?
+  representanteLegal  String?
+  estado              String    @default("ACTIVO")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relaciones
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workers       Worker[]
+  contracts     Contract[]
+  documents     Document[]
+  ruleAssignments ComplianceRuleAssignment[]
+  alerts        Alert[]
+
+  @@index([tenantId])
+  @@index([rut])
+  @@index([estado])
+  @@map("empresas")
+}
+
+// ============================================================
+// MODELO 4: Worker (Trabajador)
+// ============================================================
+
+model Worker {
+  id              String    @id @default(uuid())
+  companyId       String
+  nombreCompleto  String
+  rut             String
+  fechaNacimiento DateTime?
+  cargo           String?
+  correo          String?
+  telefono        String?
+  estado          String    @default("ACTIVO")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relaciones
+  company  Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  documents Document[]
+  alerts    Alert[]
+
+  @@index([companyId])
+  @@index([rut])
+  @@index([estado])
+  @@map("trabajadores")
+}
+
+// ============================================================
+// MODELO 5: Project (Proyecto)
+// ============================================================
+
+model Project {
+  id            String    @id @default(uuid())
+  tenantId      String
+  nombre        String
+  cliente       String?
+  fechaInicio   DateTime?
+  fechaTermino  DateTime?
+  estado        String    @default("ACTIVO")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relaciones
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contracts       Contract[]
+  ruleAssignments ComplianceRuleAssignment[]
+
+  @@index([tenantId])
+  @@index([estado])
+  @@map("proyectos")
+}
+
+// ============================================================
+// MODELO 6: Contract (Contrato)
+// ============================================================
+
+model Contract {
+  id             String    @id @default(uuid())
+  tenantId       String
+  companyId      String
+  projectId      String?
+  numeroContrato String
+  fechaInicio    DateTime?
+  fechaTermino   DateTime?
+  estado         String    @default("ACTIVO")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relaciones
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  project         Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  documents       Document[]
+  ruleAssignments ComplianceRuleAssignment[]
+
+  @@index([tenantId])
+  @@index([companyId])
+  @@index([projectId])
+  @@index([numeroContrato])
+  @@index([estado])
+  @@map("contratos")
+}
+
+// ============================================================
+// MODELO 7: Document (Documento subido)
+// ============================================================
+
+model Document {
+  id                   String    @id @default(uuid())
+  tenantId             String
+  companyId            String
+  workerId             String?
+  contractId           String?
+  categoria            String
+  tipoDocumento        String
+  nombreArchivo        String
+  rutaArchivo          String
+  tamanoBytes          Int
+  tipoMIME             String
+  hash                 String
+  metadata             String?
+  fechaEmision         DateTime?
+  fechaVencimiento     DateTime?
+  numeroDocumento      String?
+  organismoEmisor      String?
+  estado               String    @default("PENDIENTE")
+  estadoAcreditacion   String    @default("PENDIENTE")
+  observacionesIA      String?
+  recomendacionesIA    String?
+  scoreIA              Float?
+  fechaRevision        DateTime?
+  revisadoPorId        String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  // Relaciones
+  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  company         Company             @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  worker          Worker?             @relation(fields: [workerId], references: [id], onDelete: SetNull)
+  contract        Contract?           @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  revisadoPor     User?               @relation(fields: [revisadoPorId], references: [id], onDelete: SetNull)
+  versiones       DocumentVersion[]
+  revisiones      DocumentReview[]
+  ocrJobs         OcrJob[]
+  alerts          Alert[]
+
+  @@index([tenantId])
+  @@index([companyId])
+  @@index([workerId])
+  @@index([contractId])
+  @@index([estado])
+  @@index([estadoAcreditacion])
+  @@index([fechaVencimiento])
+  @@index([tipoDocumento])
+  @@index([hash])
+  @@map("documentos")
+}
+
+// ============================================================
+// MODELO 8: DocumentVersion (Control de versiones)
+// ============================================================
+
+model DocumentVersion {
+  id            String   @id @default(uuid())
+  documentId    String
+  version       Int
+  nombreArchivo String
+  rutaArchivo   String
+  tamanoBytes   Int
+  tipoMIME      String
+  hash          String
+  subidoPorId   String
+  createdAt     DateTime @default(now())
+
+  // Relaciones
+  document  Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  subidoPor User     @relation(fields: [subidoPorId], references: [id], onDelete: Restrict)
+
+  @@index([documentId])
+  @@index([version])
+  @@map("versiones_documentos")
+}
+
+// ============================================================
+// MODELO 9: DocumentReview (Revisión manual)
+// ============================================================
+
+model DocumentReview {
+  id            String   @id @default(uuid())
+  documentId    String
+  revisorId     String
+  decision      String
+  observaciones String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relaciones
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  revisor  User     @relation(fields: [revisorId], references: [id], onDelete: Restrict)
+
+  @@index([documentId])
+  @@index([revisorId])
+  @@map("revisiones_documentos")
+}
+
+// ============================================================
+// MODELO 10: ComplianceRule (Regla de cumplimiento)
+// ============================================================
+
+model ComplianceRule {
+  id              String   @id @default(uuid())
+  tenantId        String
+  nombre          String
+  descripcion     String?
+  tipoDocumento   String
+  cargo           String?
+  obligatorio     Boolean  @default(true)
+  diasAdvertencia Int      @default(30)
+  activo          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relaciones
+  tenant       Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assignments  ComplianceRuleAssignment[]
+
+  @@index([tenantId])
+  @@index([tipoDocumento])
+  @@index([activo])
+  @@map("reglas_cumplimiento")
+}
+
+// ============================================================
+// MODELO 11: ComplianceRuleAssignment (Asignación de regla)
+// ============================================================
+
+model ComplianceRuleAssignment {
+  id         String   @id @default(uuid())
+  ruleId     String
+  projectId  String?
+  contractId String?
+  companyId  String?
+  createdAt  DateTime @default(now())
+
+  // Relaciones
+  rule     ComplianceRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  project  Project?       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  contract Contract?      @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  company  Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId])
+  @@index([projectId])
+  @@index([contractId])
+  @@index([companyId])
+  @@map("asignaciones_reglas_cumplimiento")
+}
+
+// ============================================================
+// MODELO 12: Alert (Alerta)
+// ============================================================
+
+model Alert {
+  id              String    @id @default(uuid())
+  tenantId        String
+  tipo            String
+  titulo          String
+  mensaje         String?
+  leido           Boolean   @default(false)
+  destinatarioId  String
+  documentId      String?
+  workerId        String?
+  companyId       String?
+  fechaLectura    DateTime?
+  createdAt       DateTime  @default(now())
+
+  // Relaciones
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  destinatario User     @relation(fields: [destinatarioId], references: [id], onDelete: Cascade)
+  document     Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  worker       Worker?  @relation(fields: [workerId], references: [id], onDelete: SetNull)
+  company      Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([destinatarioId])
+  @@index([leido])
+  @@index([tipo])
+  @@map("alertas")
+}
+
+// ============================================================
+// MODELO 13: AuditLog (Auditoría)
+// ============================================================
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  tenantId  String
+  userId    String
+  accion    String
+  entidad   String
+  entidadId String
+  detalle   String?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  // Relaciones
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([entidad])
+  @@index([accion])
+  @@index([createdAt])
+  @@map("logs_auditoria")
+}
+
+// ============================================================
+// MODELO 14: NotificationConfig (Configuración de alertas)
+// ============================================================
+
+model NotificationConfig {
+  id                 String   @id @default(uuid())
+  tenantId           String   @unique
+  diasAdvertencia90  Int      @default(90)
+  diasAdvertencia60  Int      @default(60)
+  diasAdvertencia30  Int      @default(30)
+  diasAdvertencia15  Int      @default(15)
+  diasAdvertencia7   Int      @default(7)
+  notificarCorreo    Boolean  @default(true)
+  notificarDashboard Boolean  @default(true)
+  notificarInterno   Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Relaciones
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("configuraciones_notificacion")
+}
+
+// ============================================================
+// MODELO 15: AiConfig (Configuración IA por tenant)
+// ============================================================
+
+model AiConfig {
+  id        String   @id @default(uuid())
+  tenantId  String   @unique
+  proveedor String
+  model     String
+  apiKey    String?
+  apiUrl    String?
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("configuraciones_ia")
+}
+
+// ============================================================
+// MODELO 16: OcrJob (Trabajo OCR)
+// ============================================================
+
+model OcrJob {
+  id          String   @id @default(uuid())
+  documentId  String
+  estado      String   @default("PENDIENTE")
+  motor       String?
+  txtExtraido String?
+  score       Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([estado])
+  @@map("trabajos_ocr")
+}

@@ -1,0 +1,147 @@
+# =============================================================================
+# AcreditaPro - Docker Compose
+# Plataforma SaaS de acreditación documental y gestión de contratistas
+# =============================================================================
+
+version: "3.9"
+
+services:
+  # ---------------------------------------------------------------
+  # Frontend - React + Vite (desarrollo) / NGINX (producción)
+  # ---------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: acreditapro-frontend
+    ports:
+      - "80:80"       # HTTP
+      - "443:443"     # HTTPS (si se configura)
+    volumes:
+      # En desarrollo, montar el código fuente para hot-reload
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:3001/api}
+    depends_on:
+      - backend
+    networks:
+      - acreditapro-net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------
+  # Backend - Node.js + Express + TypeScript
+  # ---------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: acreditapro-backend
+    ports:
+      - "3001:3001"
+    volumes:
+      # En desarrollo, montar el código fuente para hot-reload
+      - ./backend:/app
+      - /app/node_modules
+      - ./uploads:/app/uploads  # Archivos subidos persistentes
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=3001
+      - DATABASE_URL=${DATABASE_URL:-postgresql://acreditapro:acreditapro_secret@postgres:5432/acreditapro}
+      - JWT_SECRET=${JWT_SECRET:-acreditapro_jwt_secret_change_in_production_2026}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-15m}
+      - JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN:-7d}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio}
+      - MINIO_PORT=${MINIO_PORT:-9000}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin_secret_key}
+      - MINIO_BUCKET=${MINIO_BUCKET:-acreditapro-docs}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:80}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    networks:
+      - acreditapro-net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------
+  # PostgreSQL 16 - Base de datos principal
+  # ---------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: acreditapro-postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Scripts de inicialización opcionales
+      - ./scripts/db/init:/docker-entrypoint-initdb.d
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-acreditapro}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-acreditapro_secret}
+      - POSTGRES_DB=${POSTGRES_DB:-acreditapro}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U acreditapro"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - acreditapro-net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------
+  # MinIO - Almacenamiento de objetos (documentos)
+  # ---------------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: acreditapro-minio
+    ports:
+      - "9000:9000"   # API de S3
+      - "9001:9001"   # Consola web
+    volumes:
+      - minio-data:/data
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin_secret_key}
+      - MINIO_BROWSER_REDIRECT_URL=${MINIO_BROWSER_URL:-http://localhost:9001}
+    command: server /data --console-address ":9001"
+    networks:
+      - acreditapro-net
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------
+  # NGINX - Proxy reverso (solo para producción o multi-servicio)
+  # ---------------------------------------------------------------
+  nginx:
+    image: nginx:alpine
+    container_name: acreditapro-nginx
+    ports:
+      - "8080:80"     # Puerto alternativo si frontend ya usa el 80
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend/dist:/usr/share/nginx/html:ro  # Build de producción
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - acreditapro-net
+    restart: unless-stopped
+
+# ---------------------------------------------------------------
+# Volúmenes persistentes
+# ---------------------------------------------------------------
+volumes:
+  postgres-data:
+    driver: local
+  minio-data:
+    driver: local
+
+# ---------------------------------------------------------------
+# Red interna
+# ---------------------------------------------------------------
+networks:
+  acreditapro-net:
+    driver: bridge
