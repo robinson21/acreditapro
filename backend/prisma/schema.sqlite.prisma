@@ -1,7 +1,5 @@
 // ============================================================
-// AcreditaPro - Schema Prisma Completo
-// Plataforma SaaS de acreditación documental y gestión de contratistas
-// Proveedor: PostgreSQL (producción) / SQLite (desarrollo local)
+// AcreditaPro - Schema Prisma para DESARROLLO LOCAL (SQLite)
 // ============================================================
 
 generator client {
@@ -9,13 +7,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
-
-// ============================================================
-// MODELO 1: Tenant (Multiempresa SaaS)
-// ============================================================
 
 model Tenant {
   id        String   @id @default(uuid())
@@ -30,7 +24,6 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relaciones
   users              User[]
   companies          Company[]
   projects           Project[]
@@ -44,10 +37,6 @@ model Tenant {
 
   @@map("tenants")
 }
-
-// ============================================================
-// MODELO 2: User (Usuario del sistema)
-// ============================================================
 
 model User {
   id            String    @id @default(uuid())
@@ -66,7 +55,6 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  // Relaciones
   tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   documentosRevisados Document[]
   revisiones         DocumentReview[]
@@ -79,10 +67,6 @@ model User {
   @@index([activo])
   @@map("usuarios")
 }
-
-// ============================================================
-// MODELO 3: Company (Empresa contratista)
-// ============================================================
 
 model Company {
   id                  String    @id @default(uuid())
@@ -98,7 +82,6 @@ model Company {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  // Relaciones
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   workers       Worker[]
   contracts     Contract[]
@@ -111,10 +94,6 @@ model Company {
   @@index([estado])
   @@map("empresas")
 }
-
-// ============================================================
-// MODELO 4: Worker (Trabajador)
-// ============================================================
 
 model Worker {
   id              String    @id @default(uuid())
@@ -129,7 +108,6 @@ model Worker {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  // Relaciones
   company  Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   documents Document[]
   alerts    Alert[]
@@ -139,10 +117,6 @@ model Worker {
   @@index([estado])
   @@map("trabajadores")
 }
-
-// ============================================================
-// MODELO 5: Project (Proyecto)
-// ============================================================
 
 model Project {
   id            String    @id @default(uuid())
@@ -155,7 +129,6 @@ model Project {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  // Relaciones
   tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contracts       Contract[]
   ruleAssignments ComplianceRuleAssignment[]
@@ -164,10 +137,6 @@ model Project {
   @@index([estado])
   @@map("proyectos")
 }
-
-// ============================================================
-// MODELO 6: Contract (Contrato)
-// ============================================================
 
 model Contract {
   id             String    @id @default(uuid())
@@ -181,7 +150,6 @@ model Contract {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  // Relaciones
   tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   company         Company         @relation(fields: [companyId], references: [id], onDelete: Restrict)
   project         Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
@@ -195,10 +163,6 @@ model Contract {
   @@index([estado])
   @@map("contratos")
 }
-
-// ============================================================
-// MODELO 7: Document (Documento subido)
-// ============================================================
 
 model Document {
   id                   String    @id @default(uuid())
@@ -228,7 +192,6 @@ model Document {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
-  // Relaciones
   tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   company         Company             @relation(fields: [companyId], references: [id], onDelete: Restrict)
   worker          Worker?             @relation(fields: [workerId], references: [id], onDelete: SetNull)
@@ -251,10 +214,6 @@ model Document {
   @@map("documentos")
 }
 
-// ============================================================
-// MODELO 8: DocumentVersion (Control de versiones)
-// ============================================================
-
 model DocumentVersion {
   id            String   @id @default(uuid())
   documentId    String
@@ -267,7 +226,6 @@ model DocumentVersion {
   subidoPorId   String
   createdAt     DateTime @default(now())
 
-  // Relaciones
   document  Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
   subidoPor User     @relation(fields: [subidoPorId], references: [id], onDelete: Restrict)
 
@@ -275,10 +233,6 @@ model DocumentVersion {
   @@index([version])
   @@map("versiones_documentos")
 }
-
-// ============================================================
-// MODELO 9: DocumentReview (Revisión manual)
-// ============================================================
 
 model DocumentReview {
   id            String   @id @default(uuid())
@@ -289,7 +243,6 @@ model DocumentReview {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  // Relaciones
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
   revisor  User     @relation(fields: [revisorId], references: [id], onDelete: Restrict)
 
@@ -297,10 +250,6 @@ model DocumentReview {
   @@index([revisorId])
   @@map("revisiones_documentos")
 }
-
-// ============================================================
-// MODELO 10: ComplianceRule (Regla de cumplimiento)
-// ============================================================
 
 model ComplianceRule {
   id              String   @id @default(uuid())
@@ -315,7 +264,6 @@ model ComplianceRule {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  // Relaciones
   tenant       Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   assignments  ComplianceRuleAssignment[]
 
@@ -325,10 +273,6 @@ model ComplianceRule {
   @@map("reglas_cumplimiento")
 }
 
-// ============================================================
-// MODELO 11: ComplianceRuleAssignment (Asignación de regla)
-// ============================================================
-
 model ComplianceRuleAssignment {
   id         String   @id @default(uuid())
   ruleId     String
@@ -337,7 +281,6 @@ model ComplianceRuleAssignment {
   companyId  String?
   createdAt  DateTime @default(now())
 
-  // Relaciones
   rule     ComplianceRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
   project  Project?       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   contract Contract?      @relation(fields: [contractId], references: [id], onDelete: Cascade)
@@ -349,10 +292,6 @@ model ComplianceRuleAssignment {
   @@index([companyId])
   @@map("asignaciones_reglas_cumplimiento")
 }
-
-// ============================================================
-// MODELO 12: Alert (Alerta)
-// ============================================================
 
 model Alert {
   id              String    @id @default(uuid())
@@ -368,7 +307,6 @@ model Alert {
   fechaLectura    DateTime?
   createdAt       DateTime  @default(now())
 
-  // Relaciones
   tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   destinatario User     @relation(fields: [destinatarioId], references: [id], onDelete: Cascade)
   document     Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
@@ -382,10 +320,6 @@ model Alert {
   @@map("alertas")
 }
 
-// ============================================================
-// MODELO 13: AuditLog (Auditoría)
-// ============================================================
-
 model AuditLog {
   id        String   @id @default(uuid())
   tenantId  String
@@ -398,7 +332,6 @@ model AuditLog {
   userAgent String?
   createdAt DateTime @default(now())
 
-  // Relaciones
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
@@ -408,10 +341,6 @@ model AuditLog {
   @@index([createdAt])
   @@map("logs_auditoria")
 }
-
-// ============================================================
-// MODELO 14: NotificationConfig (Configuración de alertas)
-// ============================================================
 
 model NotificationConfig {
   id                 String   @id @default(uuid())
@@ -427,15 +356,10 @@ model NotificationConfig {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  // Relaciones
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("configuraciones_notificacion")
 }
-
-// ============================================================
-// MODELO 15: AiConfig (Configuración IA por tenant)
-// ============================================================
 
 model AiConfig {
   id        String   @id @default(uuid())
@@ -448,15 +372,10 @@ model AiConfig {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relaciones
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("configuraciones_ia")
 }
-
-// ============================================================
-// MODELO 16: OcrJob (Trabajo OCR)
-// ============================================================
 
 model OcrJob {
   id          String   @id @default(uuid())
@@ -468,7 +387,6 @@ model OcrJob {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // Relaciones
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([documentId])
