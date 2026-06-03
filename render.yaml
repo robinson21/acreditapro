@@ -8,6 +8,8 @@ services:
     startCommand: cd backend && npx prisma db push --accept-data-loss && npm run prisma:seed && npm start
     healthCheckPath: /health
     envVars:
+      - key: NODE_VERSION
+        value: "20"
       - key: NODE_ENV
         value: production
       - key: PORT
