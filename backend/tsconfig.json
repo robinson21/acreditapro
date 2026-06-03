@@ -29,6 +29,7 @@
     "emitDecoratorMetadata": true,
 
     /* === Resolución de módulos === */
+    "types": ["node"],
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
