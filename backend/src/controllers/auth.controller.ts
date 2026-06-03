@@ -66,9 +66,10 @@ export const authController = {
         return res.status(401).json({ ok: false, error: 'No autenticado' });
       }
       await authService.changePassword(userId, input.oldPassword, input.newPassword);
-      res.json({ ok: true, mensaje: 'Contraseña actualizada exitosamente' });
+      return res.json({ ok: true, mensaje: 'Contraseña actualizada exitosamente' });
     } catch (error) {
       next(error);
+      return;
     }
   },
 };
