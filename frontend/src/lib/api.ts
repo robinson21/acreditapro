@@ -122,8 +122,21 @@ const api = {
   },
 
   // Helper para respuestas paginadas
-  getPaginated<T>(path: string, signal?: AbortSignal) {
-    return request<PaginatedResponse<T>>('GET', path, undefined, { signal });
+  async getPaginated<T>(path: string, signal?: AbortSignal) {
+    const res = await request<any>('GET', path, undefined, { signal });
+    // Transformar backend { ok, data, pagination } → frontend { success, data, total, ... }
+    if (res.pagination) {
+      return {
+        success: res.ok ?? true,
+        data: res.data ?? [],
+        total: res.pagination.total ?? 0,
+        page: res.pagination.page ?? 1,
+        limit: res.pagination.limit ?? 20,
+        totalPages: res.pagination.totalPages ?? 1,
+        timestamp: new Date().toISOString(),
+      } as PaginatedResponse<T>;
+    }
+    return res as PaginatedResponse<T>;
   },
 
   // Upload con FormData
