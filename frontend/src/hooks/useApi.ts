@@ -4,8 +4,6 @@ import type {
   Company,
   Worker,
   Document,
-  Project,
-  Contract,
   Alert,
   DashboardData,
   ApiResponse,
@@ -183,13 +181,10 @@ export function useAlerts(page = 1, limit = 5) {
 }
 
 export function useUnreadAlertsCount() {
-  // NOTE: backend has NO /alerts/unread-count route yet — returns 0
   return useQuery({
     queryKey: ['alerts', 'unread-count'],
-    queryFn: async ({ signal }) => ({
-      success: true,
-      data: { count: 0 },
-    }),
+    queryFn: ({ signal }) =>
+      api.get<ApiResponse<{ count: number }>>('/alerts/unread-count', signal),
     refetchInterval: 30000,
   });
 }
@@ -234,29 +229,19 @@ export function useDashboard() {
 // ─── Proyectos ─────────────────────────────────────────────
 
 export function useProjects(page = 1, limit = 10) {
-  // NOTE: backend has NO /projects routes yet — returns empty paginated response
   return useQuery({
     queryKey: ['projects', page, limit],
-    queryFn: async ({ signal }) => ({
-      success: true,
-      data: [],
-      pagination: { page, limit, total: 0, totalPages: 0 },
-    }),
-    staleTime: 5 * 60 * 1000,
+    queryFn: ({ signal }) =>
+      api.getPaginated<any>(`/projects?page=${page}&limit=${limit}`, signal),
   });
 }
 
 // ─── Contratos ─────────────────────────────────────────────
 
 export function useContracts(page = 1, limit = 10) {
-  // NOTE: backend has NO /contracts routes yet — returns empty paginated response
   return useQuery({
     queryKey: ['contracts', page, limit],
-    queryFn: async ({ signal }) => ({
-      success: true,
-      data: [],
-      pagination: { page, limit, total: 0, totalPages: 0 },
-    }),
-    staleTime: 5 * 60 * 1000,
+    queryFn: ({ signal }) =>
+      api.getPaginated<any>(`/contracts?page=${page}&limit=${limit}`, signal),
   });
 }

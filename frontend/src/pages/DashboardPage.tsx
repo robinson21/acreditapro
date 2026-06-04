@@ -66,7 +66,7 @@ export default function DashboardPage() {
     {
       icon: <Building2 className="w-5 h-5" />,
       title: 'Empresas Activas',
-      value: dashboard.empresasActivas ?? dashboard.empresas?.activas ?? 0,
+      value: dashboard.empresasActivas ?? 0,
       change: 5,
       color: 'blue' as const,
       onClick: () => navigate('/companies'),
@@ -74,7 +74,7 @@ export default function DashboardPage() {
     {
       icon: <Users className="w-5 h-5" />,
       title: 'Trabajadores Acreditados',
-      value: dashboard.trabajadoresAcreditados ?? dashboard.trabajadores?.activos ?? 0,
+      value: dashboard.trabajadoresAcreditados ?? 0,
       change: 12,
       color: 'emerald' as const,
       onClick: () => navigate('/workers'),
@@ -82,7 +82,7 @@ export default function DashboardPage() {
     {
       icon: <FileText className="w-5 h-5" />,
       title: 'Documentos Vigentes',
-      value: dashboard.documentosVigentes ?? dashboard.documentos?.aprobados ?? 0,
+      value: dashboard.documentosVigentes ?? 0,
       change: -3,
       color: 'amber' as const,
       onClick: () => navigate('/documents'),
@@ -90,7 +90,7 @@ export default function DashboardPage() {
     {
       icon: <TrendingUp className="w-5 h-5" />,
       title: 'Cumplimiento Global',
-      value: `${dashboard.cumplimientoGlobal ?? dashboard.cumplimiento?.promedio ?? 0}%`,
+      value: `${dashboard.cumplimientoGlobal ?? 0}%`,
       change: 2,
       color: 'cyan' as const,
     },
@@ -274,7 +274,7 @@ export default function DashboardPage() {
                 No hay alertas recientes
               </p>
             ) : (
-              {(dashboard.ultimasAlertas ?? []).slice(0, 5).map((alert) => (
+              (dashboard.ultimasAlertas ?? []).slice(0, 5).map((alert) => (
                 <div
                   key={alert.id}
                   className="flex items-start gap-3 p-3 rounded-lg bg-slate-800/50 border border-slate-700/50"
