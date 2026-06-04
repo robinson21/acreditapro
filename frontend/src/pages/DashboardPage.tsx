@@ -66,7 +66,7 @@ export default function DashboardPage() {
     {
       icon: <Building2 className="w-5 h-5" />,
       title: 'Empresas Activas',
-      value: dashboard.empresasActivas,
+      value: dashboard.empresasActivas ?? dashboard.empresas?.activas ?? 0,
       change: 5,
       color: 'blue' as const,
       onClick: () => navigate('/companies'),
@@ -74,7 +74,7 @@ export default function DashboardPage() {
     {
       icon: <Users className="w-5 h-5" />,
       title: 'Trabajadores Acreditados',
-      value: dashboard.trabajadoresAcreditados,
+      value: dashboard.trabajadoresAcreditados ?? dashboard.trabajadores?.activos ?? 0,
       change: 12,
       color: 'emerald' as const,
       onClick: () => navigate('/workers'),
@@ -82,7 +82,7 @@ export default function DashboardPage() {
     {
       icon: <FileText className="w-5 h-5" />,
       title: 'Documentos Vigentes',
-      value: dashboard.documentosVigentes,
+      value: dashboard.documentosVigentes ?? dashboard.documentos?.aprobados ?? 0,
       change: -3,
       color: 'amber' as const,
       onClick: () => navigate('/documents'),
@@ -90,7 +90,7 @@ export default function DashboardPage() {
     {
       icon: <TrendingUp className="w-5 h-5" />,
       title: 'Cumplimiento Global',
-      value: `${dashboard.cumplimientoGlobal}%`,
+      value: `${dashboard.cumplimientoGlobal ?? dashboard.cumplimiento?.promedio ?? 0}%`,
       change: 2,
       color: 'cyan' as const,
     },
@@ -137,7 +137,7 @@ export default function DashboardPage() {
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={dashboard.cumplimientoPorEmpresa}
+                data={dashboard.cumplimientoPorEmpresa ?? []}
                 layout="vertical"
                 margin={{ top: 0, right: 20, left: 80, bottom: 0 }}
               >
@@ -151,7 +151,7 @@ export default function DashboardPage() {
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="porcentaje" radius={[0, 4, 4, 0]} barSize={20}>
-                  {dashboard.cumplimientoPorEmpresa.map((entry, idx) => (
+                  {(dashboard.cumplimientoPorEmpresa ?? []).map((entry, idx) => (
                     <Cell key={idx} fill={entry.color || '#3b82f6'} />
                   ))}
                 </Bar>
@@ -173,7 +173,7 @@ export default function DashboardPage() {
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
-                data={dashboard.tendenciaMensual}
+                data={dashboard.tendenciaMensual ?? []}
                 margin={{ top: 0, right: 20, left: 0, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
@@ -213,7 +213,7 @@ export default function DashboardPage() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={dashboard.documentosPorEstado}
+                  data={dashboard.documentosPorEstado ?? []}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -221,7 +221,7 @@ export default function DashboardPage() {
                   paddingAngle={4}
                   dataKey="cantidad"
                 >
-                  {dashboard.documentosPorEstado.map((entry, idx) => (
+                  {(dashboard.documentosPorEstado ?? []).map((entry, idx) => (
                     <Cell
                       key={idx}
                       fill={entry.color || pieColors[idx % pieColors.length]}
@@ -232,7 +232,7 @@ export default function DashboardPage() {
               </PieChart>
             </ResponsiveContainer>
             <div className="flex flex-col gap-2 ml-2">
-              {dashboard.documentosPorEstado.map((entry, idx) => (
+              {(dashboard.documentosPorEstado ?? []).map((entry, idx) => (
                 <div key={idx} className="flex items-center gap-2">
                   <div
                     className="w-2.5 h-2.5 rounded-full"
@@ -269,12 +269,12 @@ export default function DashboardPage() {
             </button>
           </div>
           <div className="space-y-3">
-            {dashboard.ultimasAlertas.length === 0 ? (
+              {(dashboard.ultimasAlertas ?? []).length === 0 ? (
               <p className="text-sm text-slate-500 text-center py-8">
                 No hay alertas recientes
               </p>
             ) : (
-              dashboard.ultimasAlertas.slice(0, 5).map((alert) => (
+              {(dashboard.ultimasAlertas ?? []).slice(0, 5).map((alert) => (
                 <div
                   key={alert.id}
                   className="flex items-start gap-3 p-3 rounded-lg bg-slate-800/50 border border-slate-700/50"

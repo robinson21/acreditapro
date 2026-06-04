@@ -258,72 +258,43 @@ export const reportService = {
    * Obtiene estadísticas para el dashboard principal del tenant.
    */
   async getDashboardStats(tenantId: string) {
-    const now = new Date();
-
     const [
-      totalCompanies,
       activeCompanies,
-      totalWorkers,
       activeWorkers,
-      totalDocuments,
       pendingDocuments,
       approvedDocuments,
       rejectedDocuments,
-      expiringDocuments,
-      expiredDocuments,
-      totalAlerts,
-      unreadAlerts,
     ] = await Promise.all([
-      prisma.company.count({ where: { tenantId } }),
       prisma.company.count({ where: { tenantId, estado: 'ACTIVO' } }),
-      prisma.worker.count({ where: { company: { tenantId } } }),
       prisma.worker.count({ where: { company: { tenantId }, estado: 'ACTIVO' } }),
-      prisma.document.count({ where: { tenantId } }),
       prisma.document.count({ where: { tenantId, estado: 'PENDIENTE' } }),
       prisma.document.count({ where: { tenantId, estado: 'APROBADO' } }),
       prisma.document.count({ where: { tenantId, estado: 'RECHAZADO' } }),
-      prisma.document.count({
-        where: {
-          tenantId,
-          fechaVencimiento: {
-            gte: now,
-            lte: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
-          },
-          estado: 'APROBADO',
-        },
-      }),
-      prisma.document.count({
-        where: {
-          tenantId,
-          fechaVencimiento: { lte: now },
-          estado: { in: ['APROBADO', 'PENDIENTE'] },
-        },
-      }),
-      prisma.alert.count({ where: { tenantId } }),
-      prisma.alert.count({ where: { tenantId, leido: false } }),
     ]);
 
-    // Documentos por tipo
-    const documentosPorTipo = await prisma.document.groupBy({
-      by: ['tipoDocumento'],
-      where: { tenantId },
-      _count: true,
-    });
-
-    // Cumplimiento promedio
-    const companies = await prisma.company.findMany({
+    // Cumplimiento por empresa
+    const empresas = await prisma.company.findMany({
       where: { tenantId, estado: 'ACTIVO' },
-      select: { id: true },
+      select: { id: true, razonSocial: true },
     });
 
     let totalCompliance = 0;
     let companiesEvaluated = 0;
+    const cumplimientoPorEmpresa: Array<{ empresa: string; porcentaje: number; color: string }> = [];
 
-    for (const company of companies) {
+    const colores = ['#2563eb', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+
+    for (let i = 0; i < empresas.length; i++) {
+      const company = empresas[i];
       try {
         const result = await complianceService.evaluateCompany(company.id);
         totalCompliance += result.cumplimientoPorcentaje;
         companiesEvaluated++;
+        cumplimientoPorEmpresa.push({
+          empresa: company.razonSocial,
+          porcentaje: result.cumplimientoPorcentaje,
+          color: colores[i % colores.length],
+        });
       } catch {
         // Ignorar errores de evaluación
       }
@@ -333,37 +304,34 @@ export const reportService = {
       ? Math.round(totalCompliance / companiesEvaluated)
       : 0;
 
+    // Documentos por estado
+    const documentosPorEstado = [
+      { estado: 'APROBADO', cantidad: approvedDocuments, color: '#22c55e' },
+      { estado: 'PENDIENTE', cantidad: pendingDocuments, color: '#f59e0b' },
+      { estado: 'RECHAZADO', cantidad: rejectedDocuments, color: '#ef4444' },
+    ];
+
+    // Últimas alertas
+    const ultimasAlertas = await prisma.alert.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      include: {
+        document: { select: { id: true, nombreArchivo: true, tipoDocumento: true } },
+        worker: { select: { id: true, nombreCompleto: true } },
+        company: { select: { id: true, razonSocial: true } },
+      },
+    });
+
     return {
-      empresas: {
-        total: totalCompanies,
-        activas: activeCompanies,
-        inactivas: totalCompanies - activeCompanies,
-      },
-      trabajadores: {
-        total: totalWorkers,
-        activos: activeWorkers,
-        inactivos: totalWorkers - activeWorkers,
-      },
-      documentos: {
-        total: totalDocuments,
-        pendientes: pendingDocuments,
-        aprobados: approvedDocuments,
-        rechazados: rejectedDocuments,
-        proximosAVencer: expiringDocuments,
-        vencidos: expiredDocuments,
-        porTipo: documentosPorTipo.map((d) => ({
-          tipo: d.tipoDocumento,
-          cantidad: d._count,
-        })),
-      },
-      alertas: {
-        total: totalAlerts,
-        noLeidas: unreadAlerts,
-      },
-      cumplimiento: {
-        promedio: promedioCumplimiento,
-        empresasEvaluadas: companiesEvaluated,
-      },
+      empresasActivas: activeCompanies,
+      trabajadoresAcreditados: activeWorkers,
+      documentosVigentes: approvedDocuments,
+      cumplimientoGlobal: promedioCumplimiento,
+      cumplimientoPorEmpresa,
+      tendenciaMensual: [],
+      documentosPorEstado,
+      ultimasAlertas,
     };
   },
 };

@@ -42,4 +42,17 @@ export const alertController = {
       next(error);
     }
   },
+  /**
+   * GET /api/alerts/unread-count
+   * Obtiene el conteo de alertas no leídas del usuario autenticado.
+   */
+  async unreadCount(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user!.id;
+      const count = await alertService.getUnreadCount(userId);
+      res.json({ ok: true, data: { count } });
+    } catch (error) {
+      next(error);
+    }
+  },
 };

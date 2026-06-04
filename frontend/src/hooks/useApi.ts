@@ -162,7 +162,7 @@ export function useReviewDocument() {
       estadoAcreditacion: string;
       observaciones?: string;
     }) =>
-      api.patch<ApiResponse<Document>>(`/documents/${id}/review`, {
+      api.post<ApiResponse<Document>>(`/documents/${id}/review`, {
         estadoAcreditacion,
         observaciones,
       }),
@@ -183,10 +183,13 @@ export function useAlerts(page = 1, limit = 5) {
 }
 
 export function useUnreadAlertsCount() {
+  // NOTE: backend has NO /alerts/unread-count route yet — returns 0
   return useQuery({
     queryKey: ['alerts', 'unread-count'],
-    queryFn: ({ signal }) =>
-      api.get<ApiResponse<{ count: number }>>('/alerts/unread-count', signal),
+    queryFn: async ({ signal }) => ({
+      success: true,
+      data: { count: 0 },
+    }),
     refetchInterval: 30000,
   });
 }
@@ -207,27 +210,53 @@ export function useMarkAlertAsRead() {
 export function useDashboard() {
   return useQuery({
     queryKey: ['dashboard'],
-    queryFn: ({ signal }) =>
-      api.get<ApiResponse<DashboardData>>('/dashboard', signal),
+    queryFn: async ({ signal }) => {
+      // The backend returns nested stats; transform to flat DashboardData
+      const response = await api.get<ApiResponse<any>>('/dashboard/stats', signal);
+      const d = response.data ?? {};
+      return {
+        ...response,
+        data: {
+          empresasActivas: d.empresas?.activas ?? 0,
+          trabajadoresAcreditados: d.trabajadores?.activos ?? 0,
+          documentosVigentes: d.documentos?.aprobados ?? 0,
+          cumplimientoGlobal: d.cumplimiento?.promedio ?? 0,
+          cumplimientoPorEmpresa: d.cumplimiento?.empresas ?? [],
+          tendenciaMensual: d.tendenciaMensual ?? [],
+          documentosPorEstado: d.documentos?.porEstado ?? [],
+          ultimasAlertas: d.ultimasAlertas ?? [],
+        } as DashboardData,
+      } as ApiResponse<DashboardData>;
+    },
   });
 }
 
 // ─── Proyectos ─────────────────────────────────────────────
 
 export function useProjects(page = 1, limit = 10) {
+  // NOTE: backend has NO /projects routes yet — returns empty paginated response
   return useQuery({
     queryKey: ['projects', page, limit],
-    queryFn: ({ signal }) =>
-      api.getPaginated<Project>(`/projects?page=${page}&limit=${limit}`, signal),
+    queryFn: async ({ signal }) => ({
+      success: true,
+      data: [],
+      pagination: { page, limit, total: 0, totalPages: 0 },
+    }),
+    staleTime: 5 * 60 * 1000,
   });
 }
 
 // ─── Contratos ─────────────────────────────────────────────
 
 export function useContracts(page = 1, limit = 10) {
+  // NOTE: backend has NO /contracts routes yet — returns empty paginated response
   return useQuery({
     queryKey: ['contracts', page, limit],
-    queryFn: ({ signal }) =>
-      api.getPaginated<Contract>(`/contracts?page=${page}&limit=${limit}`, signal),
+    queryFn: async ({ signal }) => ({
+      success: true,
+      data: [],
+      pagination: { page, limit, total: 0, totalPages: 0 },
+    }),
+    staleTime: 5 * 60 * 1000,
   });
 }

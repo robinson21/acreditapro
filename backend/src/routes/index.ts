@@ -9,6 +9,8 @@ import { complianceController } from '../controllers/compliance.controller';
 import { alertController } from '../controllers/alert.controller';
 import { dashboardController } from '../controllers/dashboard.controller';
 import { aiController } from '../controllers/ai.controller';
+import { projectController } from '../controllers/project.controller';
+import { contractController } from '../controllers/contract.controller';
 import { validate } from '../middleware/validate';
 import { z } from 'zod';
 
@@ -53,7 +55,7 @@ const updateCompanySchema = z.object({
 });
 
 const createWorkerSchema = z.object({
-  companyId: z.string().uuid('ID de empresa inválido'),
+  companyId: z.string().min(1, 'ID de empresa requerido'),
   nombreCompleto: z.string().min(1, 'Nombre completo requerido'),
   rut: z.string().min(1, 'RUT requerido'),
   fechaNacimiento: z.string().optional(),
@@ -108,6 +110,7 @@ router.get('/documents/expiring', verifyToken, documentController.getExpiring);
 router.get('/documents/expired', verifyToken, documentController.getExpired);
 router.get('/documents/:id', verifyToken, documentController.getById);
 router.post('/documents/:id/review', verifyToken, requireRole('ADMIN', 'REVISOR'), auditLog, documentController.review);
+router.patch('/documents/:id/review', verifyToken, requireRole('ADMIN', 'REVISOR'), auditLog, documentController.review);
 
 // ============================================================
 // Compliance Routes - /api/compliance (requieren auth)
@@ -123,7 +126,24 @@ router.get('/compliance/report/:type/:id', verifyToken, complianceController.gen
 // ============================================================
 
 router.get('/alerts', verifyToken, alertController.list);
+router.get('/alerts/unread-count', verifyToken, alertController.unreadCount);
 router.patch('/alerts/:id/read', verifyToken, alertController.markAsRead);
+
+// ============================================================
+// Project Routes - /api/projects (requieren auth)
+// ============================================================
+
+router.get('/projects', verifyToken, projectController.list);
+router.get('/projects/:id', verifyToken, projectController.getById);
+router.post('/projects', verifyToken, requireRole('ADMIN'), auditLog, projectController.create);
+
+// ============================================================
+// Contract Routes - /api/contracts (requieren auth)
+// ============================================================
+
+router.get('/contracts', verifyToken, contractController.list);
+router.get('/contracts/:id', verifyToken, contractController.getById);
+router.post('/contracts', verifyToken, requireRole('ADMIN'), auditLog, contractController.create);
 
 // ============================================================
 // Dashboard Routes - /api/dashboard (requieren auth)

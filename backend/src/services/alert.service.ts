@@ -219,4 +219,15 @@ export const alertService = {
 
     return updated;
   },
+
+  /**
+   * Obtiene el conteo de alertas no leídas de un usuario.
+   */
+  async getUnreadCount(userId: string) {
+    const count = await prisma.alert.count({
+      where: { destinatarioId: userId, leido: false },
+    });
+
+    return count;
+  },
 };
